@@ -136,3 +136,9 @@ div{
     margin-top: 20px;
     margin-bottom: 50px;
 }
+
+.fb-comments{
+    position: relative;
+    margin-left: 180px;
+    margin-top: 10px;
+}
