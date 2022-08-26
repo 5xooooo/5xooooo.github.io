@@ -1,0 +1,26 @@
+input{
+    width:120px;
+    height: 80px;
+    font-size:20px;
+    position: relative;
+}
+
+#output{
+    position: relative;
+    top: 100px;
+    left: 540px;
+    border: 2px black solid;
+    width: 490px;
+    height: 80px;
+    text-align: right;
+    line-height: 80px;
+    font-size: 30px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+ol{
+    position: relative;
+    top: 100px;
+    left: 500px;
+}
