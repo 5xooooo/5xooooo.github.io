@@ -1,0 +1,138 @@
+body{
+    margin: 0px;
+    background-image: url("https://i.pinimg.com/originals/69/17/c3/6917c33f31912b1a7628cf3529fda4fc.jpg");
+    background-size: 15%;
+    background-attachment: fixed;
+    font-family:sans-serif, serif;
+}
+
+hr{
+    margin: 0px;
+    margin-bottom: 0px;
+}
+
+div{
+    opacity: 0.95;
+}
+
+#description{
+    text-align: center;
+    line-height: 80px;
+    height: 80px;
+    background-color: white;
+    margin: 0px;
+}
+
+#catalog{
+    list-style: none;
+    background-color: white;
+    padding: 3px;
+    margin: 0px;
+    height: 40px;
+}
+
+#catalog ul{
+    display: flex;
+    align-items: center;
+    margin: 7px;
+}
+
+#catalog li{
+    display: block;
+    height: 10px;
+    margin: 0px;
+    float: left;
+    /* border-style: solid; */
+}
+
+#catalog li a{
+    text-decoration: none;
+    color: black;
+    padding-right: 10px;
+    padding-left: 10px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    /* border: 1px solid #000; */
+}
+
+#catalog li a:hover{
+    color: blue;
+}
+
+.introduction{
+    width: 350px;
+    height: 800px;
+    float: right;
+    margin-top: 20px;
+    margin-right: 180px;
+    background-color: white;
+    /* border: 1px solid #d3d3d3; */
+}
+
+#myphoto{
+    margin: 20px 50px 0px 50px;
+}
+
+#name{
+    font-size: 25px;
+    text-align: center;
+    margin-top: 0px;
+}
+
+#exp_title, #acc_title{
+    margin-left: 25px;
+    font-size: 20px;
+}
+
+#exp ul li{
+    /* list-style: none; */
+    /* float: left; */
+    position: relative;
+    word-wrap: break-word;
+    margin-right: 20px;
+}
+
+#account ul li{
+    list-style: none;
+    display: flex;
+}
+
+.icon{
+    margin-bottom: 5px;
+}
+
+#account ul li a{
+    height: 30px;
+    display: flex;
+    align-items: center;
+    margin-top: 0px;
+    margin-left: 5px;
+    text-decoration: none;
+    color: black;
+}
+
+#account ul li a:hover{
+    color: blue;
+}
+
+.content{
+    width: 770px;
+    height: auto;
+    background-color: white;
+    float: left;
+    margin-top: 20px;
+    margin-left: 180px;
+    border: 1px solid #d3d3d3;
+    padding: 10px;
+}
+
+.content p{
+    text-align: center;
+}
+
+#memecat{
+    float:left;
+    margin-left: 60px;
+    margin-top: 20px;
+    margin-bottom: 50px;
+}
