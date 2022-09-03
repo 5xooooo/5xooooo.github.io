@@ -73,3 +73,10 @@ div{
 .content p{
     text-align: center;
 }
+
+.fb-comments{
+    background: #FFF;
+    position: relative;
+    margin-left: 180px;
+    margin-top: 10px;
+}
