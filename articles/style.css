@@ -59,64 +59,8 @@ div{
     color: blue;
 }
 
-.introduction{
-    width: 350px;
-    height: 800px;
-    float: right;
-    margin-top: 20px;
-    margin-right: 180px;
-    background-color: white;
-    /* border: 1px solid #d3d3d3; */
-}
-
-#myphoto{
-    margin: 50px 50px 0px 50px;
-}
-
-#name{
-    font-size: 25px;
-    text-align: center;
-    margin-top: 0px;
-}
-
-#exp_title, #acc_title{
-    margin-left: 25px;
-    font-size: 20px;
-}
-
-#exp ul li{
-    /* list-style: none; */
-    /* float: left; */
-    position: relative;
-    word-wrap: break-word;
-    margin-right: 20px;
-}
-
-#account ul li{
-    list-style: none;
-    display: flex;
-}
-
-.icon{
-    margin-bottom: 5px;
-}
-
-#account ul li a{
-    height: 30px;
-    display: flex;
-    align-items: center;
-    margin-top: 0px;
-    margin-left: 5px;
-    text-decoration: none;
-    color: black;
-}
-
-#account ul li a:hover{
-    color: blue;
-}
-
 .content{
-    width: 770px;
+    width: 1140px;
     height: auto;
     background-color: white;
     float: left;
@@ -128,18 +72,4 @@ div{
 
 .content p{
     text-align: center;
-}
-
-#memecat{
-    float:left;
-    margin-left: 60px;
-    margin-top: 20px;
-    margin-bottom: 50px;
-}
-
-.fb-comments{
-    background: #FFF;
-    position: relative;
-    margin-left: 180px;
-    margin-top: 10px;
 }
