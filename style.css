@@ -1,9 +1,16 @@
+@font-face {
+    font-family: bodytext;
+    src:url(NotoSerifTC-SemiBold.otf) format("opentype"),
+        local(msjh);
+         
+}
+
 body{
+    font-family: bodytext;
     margin: 0px;
     background-image: url("https://i.pinimg.com/originals/69/17/c3/6917c33f31912b1a7628cf3529fda4fc.jpg");
     background-size: 15%;
     background-attachment: fixed;
-    font-family:sans-serif, serif;
 }
 
 hr{
@@ -12,7 +19,7 @@ hr{
 }
 
 div{
-    opacity: 0.95;
+    opacity: 1;
 }
 
 #description{
@@ -129,6 +136,7 @@ div{
 .content p{
     text-align: center;
 }
+/* 9.4改為article */
 
 #memecat{
     float:left;
