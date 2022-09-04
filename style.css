@@ -8,9 +8,9 @@
 body{
     font-family: bodytext;
     margin: 0px;
-    background-image: url("https://i.pinimg.com/originals/69/17/c3/6917c33f31912b1a7628cf3529fda4fc.jpg");
+    /* background-image: url("https://i.pinimg.com/originals/69/17/c3/6917c33f31912b1a7628cf3529fda4fc.jpg");
     background-size: 15%;
-    background-attachment: fixed;
+    background-attachment: fixed; */
 }
 
 hr{
@@ -26,14 +26,16 @@ div{
     text-align: center;
     line-height: 80px;
     height: 80px;
-    background-color: white;
+    background-color: #161B22;
+    color: #ccc;
     margin: 0px;
 }
 
 #catalog{
     list-style: none;
-    background-color: white;
-    padding: 3px;
+    background-color: #161B22;
+    padding-top: 10px;
+    padding-bottom: 10px;
     margin: 0px;
     height: 40px;
 }
@@ -54,7 +56,7 @@ div{
 
 #catalog li a{
     text-decoration: none;
-    color: black;
+    color: #ccc;
     padding-right: 10px;
     padding-left: 10px;
     padding-top: 3px;
@@ -72,8 +74,9 @@ div{
     float: right;
     margin-top: 20px;
     margin-right: 180px;
-    background-color: white;
-    /* border: 1px solid #d3d3d3; */
+    /* background-color: #0D1111; */
+    color: #ccc;
+    border: 0.1px solid #2c2c2c;
 }
 
 #myphoto{
@@ -115,21 +118,22 @@ div{
     margin-top: 0px;
     margin-left: 5px;
     text-decoration: none;
-    color: black;
+    color: #ccc;
 }
 
 #account ul li a:hover{
-    color: blue;
+    color: #929292;
 }
 
 .content{
     width: 770px;
     height: auto;
-    background-color: white;
+    /* background-color: #20252C; */
+    color: #ccc;
     float: left;
     margin-top: 20px;
     margin-left: 180px;
-    border: 1px solid #d3d3d3;
+    border: 1px solid #2c2c2c;
     padding: 10px;
 }
 
@@ -146,7 +150,7 @@ div{
 }
 
 .fb-comments{
-    background: #FFF;
+    background: #0D1117;
     position: relative;
     margin-left: 180px;
     margin-top: 10px;
