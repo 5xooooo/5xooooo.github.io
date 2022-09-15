@@ -70,10 +70,11 @@ div{
 
 .introduction{
     width: 350px;
-    height: 800px;
+    height: 700px;
     float: right;
     margin-top: 20px;
     margin-right: 180px;
+    margin-bottom: 20px;
     /* background-color: #0D1111; */
     color: #ccc;
     border: 0.1px solid #2c2c2c;
