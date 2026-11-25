@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>桌角場景重建</title>
+<meta name="description" content="用 GenRecon 從 13 秒手機影片重建的實驗室桌角 3D 場景">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-screen viewer. Slim header, full-bleed 3D stage, floating control card bottom-left. */
+:root {
+  --bg: #eceef1;
+  --canvas: #dfe3e8;
+  --panel: rgba(255, 255, 255, 0.9);
+  --fg: #1a1e24;
+  --muted: #5b6470;
+  --line: #cfd5dc;
+  --accent: #2a67b3;
+  --accent-fg: #ffffff;
+  --grid: #a9b1bb;
+  --font-body: "Noto Sans TC", system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111418; --canvas: #171b20; --panel: rgba(28, 32, 38, 0.9); --fg: #e6e9ed;
+    --muted: #97a0ab; --line: #2d333b; --accent: #6ea6ea; --accent-fg: #0d1117; --grid: #3a424c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111418; --canvas: #171b20; --panel: rgba(28, 32, 38, 0.9); --fg: #e6e9ed;
+  --muted: #97a0ab; --line: #2d333b; --accent: #6ea6ea; --accent-fg: #0d1117; --grid: #3a424c;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; font-size: 14px;
+  background: var(--bg); color: var(--fg); font-family: var(--font-body);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+header {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px;
+  padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line);
+}
+h1 { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: 0.02em; text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.meta li {
+  font-family: var(--font-data); font-size: 0.72rem; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 4px; padding: 2px 7px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.stage { position: relative; flex: 1; min-height: 0; }
+canvas#view { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+
+.hint {
+  position: absolute; top: 12px; right: max(16px, env(safe-area-inset-right, 0px));
+  font-size: 0.75rem; color: var(--muted); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.panel {
+  position: absolute;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: min(300px, calc(100% - 32px));
+  display: grid; gap: 14px; padding: 14px 16px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.field { display: grid; gap: 6px; }
+.field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.field label { font-size: 0.82rem; font-weight: 500; }
+.value { font-family: var(--font-data); font-size: 0.8rem; color: var(--accent); font-variant-numeric: tabular-nums; }
+.note { margin: 0; font-size: 0.72rem; color: var(--muted); line-height: 1.5; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+button {
+  font: inherit; font-size: 0.8rem; color: var(--fg); background: transparent;
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+button:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.loading {
+  position: absolute; inset: 0; display: grid; place-content: center; gap: 10px;
+  justify-items: center; text-align: center; color: var(--muted); font-size: 0.85rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.bar { width: min(240px, 60vw); height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.bar > span { display: block; height: 100%; width: 0%; background: var(--accent); transition: width 0.15s linear; }
+.error { color: var(--fg); max-width: 34ch; line-height: 1.6; }
+
+@media (max-width: 520px) {
+  .hint { display: none; }
+  .panel { gap: 10px; padding: 12px 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar > span { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>桌角場景重建</h1>
+  <ul class="meta" aria-label="重建資訊">
+    <li>13 秒手機影片</li>
+    <li>126 / 130 影格註冊</li>
+    <li>4 個 2.56 m 區塊</li>
+    <li id="faceCount">— 面</li>
+  </ul>
+</header>
+
+<main class="stage">
+  <canvas id="view" tabindex="0" aria-label="3D 場景檢視器：拖曳旋轉，滾輪縮放，右鍵或雙指平移"></canvas>
+  <div class="hint">拖曳旋轉 · 滾輪縮放 · 右鍵或雙指平移</div>
+
+  <div class="loading" id="loading">
+    <div id="loadText">載入模型中…</div>
+    <div class="bar" aria-hidden="true"><span id="loadBar"></span></div>
+  </div>
+
+  <section class="panel" aria-label="檢視設定">
+    <div class="field">
+      <div class="field-head">
+        <label for="cut">剖面高度</label>
+        <span class="value" id="cutValue">1.95 m</span>
+      </div>
+      <input type="range" id="cut" min="0.3" max="2.6" step="0.01" value="1.95">
+      <p class="note">切掉這個高度以上的部分，從上方就能看進場景。拉到最右邊會顯示天花板。</p>
+    </div>
+    <div class="buttons">
+      <button type="button" id="shading" aria-pressed="false">光照</button>
+      <button type="button" id="spin" aria-pressed="false">自動旋轉</button>
+      <button type="button" id="reset">重設視角</button>
+    </div>
+    <p class="note">GenRecon 官方權重重建。預覽版：頂點顏色，原始 900 萬面簡化到 1.6 cm 精度；地板網格每格 50 cm。</p>
+  </section>
+</main>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const canvas = document.getElementById("view");
+const stage = canvas.parentElement;
+const loadingEl = document.getElementById("loading");
+const loadText = document.getElementById("loadText");
+const loadBar = document.getElementById("loadBar");
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.localClippingEnabled = true;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.autoRotateSpeed = 0.8;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f96, 1.7));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+sun.position.set(2.5, 4, 2);
+scene.add(sun);
+
+// keep geometry below the cut height: plane normal points down, constant = height
+const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1.95);
+const unlitMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, clippingPlanes: [cutPlane] });
+const litMat = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.85, metalness: 0, clippingPlanes: [cutPlane] });
+const meshes = [];
+let grid = null;
+let home = null;
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function applyTheme() {
+  renderer.setClearColor(new THREE.Color(cssVar("--canvas")));
+  if (grid) {
+    grid.material.vertexColors = false;
+    grid.material.color = new THREE.Color(cssVar("--grid"));
+    grid.material.needsUpdate = true;
+  }
+}
+applyTheme();
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+
+async function fetchModel(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const total = Number(res.headers.get("content-length")) || 0;
+  const reader = res.body.getReader();
+  const chunks = [];
+  let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    got += value.length;
+    const mb = (got / 1e6).toFixed(1);
+    loadText.textContent = total ? `載入模型中… ${mb} / ${(total / 1e6).toFixed(1)} MB` : `載入模型中… ${mb} MB`;
+    if (total) loadBar.style.width = `${Math.min(100, (got / total) * 100)}%`;
+  }
+  let bytes = new Uint8Array(got);
+  let off = 0;
+  for (const c of chunks) { bytes.set(c, off); off += c.length; }
+  // gzip magic 1f 8b: decompress here (plain .glb passes straight through)
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    loadText.textContent = "解壓縮中…";
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  return bytes.buffer;
+}
+
+function setupScene(root) {
+  let faces = 0;
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const g = o.geometry;
+    const col = g.getAttribute("color");
+    if (col) {
+      // vertex colours were written as sRGB bytes; glTF reads COLOR_0 as linear
+      const lin = new Float32Array(col.count * 3);
+      for (let i = 0; i < col.count; i++) {
+        lin[i * 3] = srgbToLinear(col.getX(i));
+        lin[i * 3 + 1] = srgbToLinear(col.getY(i));
+        lin[i * 3 + 2] = srgbToLinear(col.getZ(i));
+      }
+      g.setAttribute("color", new THREE.BufferAttribute(lin, 3));
+    }
+    if (!g.getAttribute("normal")) g.computeVertexNormals();
+    faces += g.index ? g.index.count / 3 : g.getAttribute("position").count / 3;
+    o.material = unlitMat;
+    meshes.push(o);
+  });
+  scene.add(root);
+  document.getElementById("faceCount").textContent = `${(faces / 1e4).toFixed(1)} 萬面`;
+
+  const box = new THREE.Box3().setFromObject(root);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+
+  grid = new THREE.GridHelper(Math.ceil(maxDim * 2 / 0.5) * 0.5, Math.ceil(maxDim * 2 / 0.5));
+  grid.position.set(center.x, box.min.y - 0.004, center.z);
+  grid.material.transparent = true;
+  grid.material.opacity = 0.55;
+  scene.add(grid);
+  applyTheme();
+
+  // the phone was on the +x side of the scene, so open from that side, looking down
+  const target = new THREE.Vector3(center.x, box.min.y + size.y * 0.3, center.z);
+  const dir = new THREE.Vector3(1.0, 1.05, 0.45).normalize();
+  home = { target, position: target.clone().addScaledVector(dir, maxDim * 1.55) };
+  resetView();
+  controls.maxDistance = maxDim * 6;
+  controls.minDistance = 0.2;
+}
+
+function resetView() {
+  if (!home) return;
+  controls.target.copy(home.target);
+  camera.position.copy(home.position);
+  controls.update();
+}
+
+const cut = document.getElementById("cut");
+const cutValue = document.getElementById("cutValue");
+function applyCut() {
+  const h = parseFloat(cut.value);
+  cutPlane.constant = h >= 2.59 ? 100 : h;
+  cutValue.textContent = h >= 2.59 ? "全部顯示" : `${h.toFixed(2)} m`;
+}
+cut.addEventListener("input", applyCut);
+applyCut();
+
+const shadingBtn = document.getElementById("shading");
+shadingBtn.addEventListener("click", () => {
+  const on = shadingBtn.getAttribute("aria-pressed") !== "true";
+  shadingBtn.setAttribute("aria-pressed", String(on));
+  for (const m of meshes) m.material = on ? litMat : unlitMat;
+});
+const spinBtn = document.getElementById("spin");
+spinBtn.addEventListener("click", () => {
+  const on = spinBtn.getAttribute("aria-pressed") !== "true";
+  spinBtn.setAttribute("aria-pressed", String(on));
+  controls.autoRotate = on;
+});
+document.getElementById("reset").addEventListener("click", resetView);
+
+renderer.setAnimationLoop(() => {
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+try {
+  const buf = await fetchModel("scene.glb");
+  loadText.textContent = "解析模型中…";
+  const gltf = await new GLTFLoader().parseAsync(buf, "");
+  setupScene(gltf.scene);
+  loadingEl.hidden = true;
+} catch (err) {
+  loadText.className = "error";
+  loadText.textContent = `模型載入失敗（${err.message}）。請重新整理頁面再試一次。`;
+  loadBar.parentElement.hidden = true;
+}
+</script>
+
+</body>
+</html>
