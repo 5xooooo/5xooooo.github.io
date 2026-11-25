@@ -1,51 +1,73 @@
 <!doctype html>
-<html>
+<html lang="zh-Hant">
 <head>
-	<meta charset="utf-8">
-	<meta name="description" content="">
-	<title>Final Project</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Brian Wu 的個人部落格：寫程式、資料視覺化與生活紀錄。">
+  <title>Brian Wu</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-	<style>
-		.d3-tip {
-		  line-height: 1;
-		  padding: 6px;
-		  background: rgba(0, 0, 0, 0.8);
-		  color: #fff;
-		  border-radius: 4px;
-		  font-size: 12px;
-		}
-		body {
-			background-color: #141414;
-			color: white;
-		}
-		.country-hovered {
-			fill: lightpink;
-		}
-		.country-selected {
-			fill: lightcoral;
-		}
-		.grid {
-			fill: none;
-			stroke: #ccc;
-		}
-		.axis {
-			stroke: #ccc;
-			stroke-dasharray: 2, 4;
-		}
-		.radar-label {
-			fill: #ccc;
-		}
-	</style>
-	<svg width="2000" height="1000">
-	</svg>
-	<style>
-		
-	</style>
-	<button id="sortButton">sort</button>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="./">Brian Wu</a>
+      <nav class="nav">
+        <a href="#posts">文章</a>
+        <a href="#projects">作品</a>
+        <a href="#about">關於</a>
+      </nav>
+    </div>
+  </header>
 
-	<script src="https://d3js.org/d3.v5.min.js"></script>
-	<script src="d3-tip.js"></script>
-	<script src="main.js"></script>
+  <main class="wrap">
+    <div class="hero">
+      <h1>嗨，我是 Brian 👋</h1>
+      <p>這裡是我的個人部落格，記錄寫程式、資料視覺化，還有一些學習和生活上的想法。</p>
+      <div class="socials">
+        <a href="https://github.com/5xooooo">GitHub</a>
+      </div>
+    </div>
+
+    <section id="posts">
+      <h2>最新文章</h2>
+      <ul class="post-list">
+        <li>
+          <a href="posts/taiwan-wind-rainfall.html">用 D3.js 視覺化台灣風向與降雨</a>
+          <time datetime="2024-12-20">2024-12-20</time>
+        </li>
+        <li>
+          <a href="posts/hello-world.html">Hello World：部落格開張</a>
+          <time datetime="2026-11-25">2026-11-25</time>
+        </li>
+      </ul>
+    </section>
+
+    <section id="projects">
+      <h2>作品</h2>
+      <div class="projects">
+        <a class="card" href="DataVisDemo/">
+          <img src="DataVisDemo/screenshot.png" alt="台灣風向與降雨視覺化截圖" loading="lazy">
+          <div class="card-body">
+            <h3>The Impact of Wind Direction on Precipitation in Taiwan</h3>
+            <p>資料視覺化課程期末專題：用 2023 年氣象站資料，探索風向對台灣各地降雨的影響。</p>
+            <div class="tags">
+              <span class="tag">D3.js</span>
+              <span class="tag">Data Visualization</span>
+              <span class="tag">Python</span>
+            </div>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section id="about">
+      <h2>關於我</h2>
+      <p>我是 Brian Wu，對資料視覺化、前端和各種好玩的程式小專案有興趣。這個網站用純 HTML/CSS 寫成，放在 GitHub Pages 上。</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">© 2026 Brian Wu · Hosted on GitHub Pages</div>
+  </footer>
 </body>
 </html>

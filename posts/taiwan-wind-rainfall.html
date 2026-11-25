@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>用 D3.js 視覺化台灣風向與降雨 · Brian Wu</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="../">Brian Wu</a>
+      <nav class="nav">
+        <a href="../#posts">文章</a>
+        <a href="../#projects">作品</a>
+        <a href="../#about">關於</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <article class="post">
+      <h1>用 D3.js 視覺化台灣風向與降雨</h1>
+      <div class="meta"><time datetime="2024-12-20">2024-12-20</time> · 資料視覺化期末專題</div>
+
+      <p><img src="../DataVisDemo/screenshot.png" alt="專題截圖"></p>
+
+      <p>這是我在資料視覺化課程的期末專題，主題是 <strong>The Impact of Wind Direction on Precipitation in Taiwan</strong>：想看看台灣不同地區的降雨量，和當地的風向之間有沒有關係。</p>
+
+      <h2>資料</h2>
+      <p>使用 2023 年全台氣象站的每日風向、風速與雨量資料，先用 Python 做前處理，整理成依測站、依縣市的 CSV / JSON，再交給前端畫圖。</p>
+
+      <h2>視覺化</h2>
+      <p>前端用 <code>D3.js v5</code> 畫出台灣地圖，點選縣市後可以看到該地區的風向分布（雷達圖）與降雨量，比較不同地區在不同風向下的降雨差異。</p>
+
+      <p><a href="../DataVisDemo/">👉 打開互動 Demo</a></p>
+
+      <a class="back" href="../">← 回首頁</a>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">© 2026 Brian Wu · Hosted on GitHub Pages</div>
+  </footer>
+</body>
+</html>
