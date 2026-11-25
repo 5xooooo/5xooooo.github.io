@@ -1,345 +1,387 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>桌角場景重建</title>
-<meta name="description" content="用 GenRecon 從 13 秒手機影片重建的實驗室桌角 3D 場景">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
-<style>
-/* Layout: one-screen viewer. Slim header, full-bleed 3D stage, floating control card bottom-left. */
-:root {
-  --bg: #eceef1;
-  --canvas: #dfe3e8;
-  --panel: rgba(255, 255, 255, 0.9);
-  --fg: #1a1e24;
-  --muted: #5b6470;
-  --line: #cfd5dc;
-  --accent: #2a67b3;
-  --accent-fg: #ffffff;
-  --grid: #a9b1bb;
-  --font-body: "Noto Sans TC", system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
-  --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #111418; --canvas: #171b20; --panel: rgba(28, 32, 38, 0.9); --fg: #e6e9ed;
-    --muted: #97a0ab; --line: #2d333b; --accent: #6ea6ea; --accent-fg: #0d1117; --grid: #3a424c;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #111418; --canvas: #171b20; --panel: rgba(28, 32, 38, 0.9); --fg: #e6e9ed;
-  --muted: #97a0ab; --line: #2d333b; --accent: #6ea6ea; --accent-fg: #0d1117; --grid: #3a424c;
-  color-scheme: dark;
-}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="用 13 秒手機影片和 GenRecon 重建實驗室桌角的 3D 場景，可以直接在網頁上旋轉檢視，附上做法。">
+  <title>用手機影片重建 3D 場景 · Brian Wu</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    /* ---- page-specific: wide figures, 3D viewer, video block, steps ---- */
+    .wide {
+      width: min(1000px, calc(100vw - 40px));
+      margin-left: calc((100% - min(1000px, 100vw - 40px)) / 2);
+    }
+    [hidden] { display: none !important; }
+    figure { margin: 28px 0; }
+    figcaption, .caption { margin-top: 8px; font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
+    figure.viewer { margin-bottom: 0; }
+    .caption { margin-bottom: 28px; }
+    .post figure img { display: block; width: 100%; height: auto; }
 
-*, *::before, *::after { box-sizing: border-box; }
-[hidden] { display: none !important; }
-html, body { height: 100%; }
-body {
-  margin: 0; font-size: 14px;
-  background: var(--bg); color: var(--fg); font-family: var(--font-body);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-header {
-  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px;
-  padding-block: 12px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  border-bottom: 1px solid var(--line);
-}
-h1 { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: 0.02em; text-wrap: balance; }
-.meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.meta li {
-  font-family: var(--font-data); font-size: 0.72rem; color: var(--muted);
-  border: 1px solid var(--line); border-radius: 4px; padding: 2px 7px;
-  font-variant-numeric: tabular-nums; white-space: nowrap;
-}
-.stage { position: relative; flex: 1; min-height: 0; }
-canvas#view { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+    .viewer {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .viewer-stage { position: relative; aspect-ratio: 16 / 10; background: var(--code-bg); }
+    .viewer-stage canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+    .viewer-stage canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .viewer-hint {
+      position: absolute; top: 10px; left: 10px;
+      font-size: 0.75rem; line-height: 1.4; color: var(--muted);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 999px; padding: 4px 10px; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .viewer.active .viewer-hint { opacity: 0; }
+    .viewer-loading {
+      position: absolute; inset: 0; display: grid; place-content: center; justify-items: center;
+      gap: 10px; text-align: center; color: var(--muted); font-size: 0.85rem; padding: 0 16px;
+    }
+    .viewer-loading .bar { width: min(220px, 60%); height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+    .viewer-loading .bar span { display: block; height: 100%; width: 0%; background: var(--accent); }
+    .viewer-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+      padding: 10px 14px; border-top: 1px solid var(--border); font-size: 0.85rem;
+    }
+    .viewer-cut { display: flex; align-items: center; gap: 10px; flex: 1 1 260px; min-width: 0; }
+    .viewer-cut label { white-space: nowrap; }
+    .viewer-cut input { flex: 1; min-width: 0; accent-color: var(--accent); }
+    .viewer-cut output { font-variant-numeric: tabular-nums; color: var(--accent); min-width: 5.5em; text-align: right; }
+    .viewer-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+    .viewer button {
+      font: inherit; font-size: 0.8rem; color: var(--text); background: transparent;
+      border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer;
+    }
+    .viewer button:hover { border-color: var(--accent); }
+    .viewer button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+    .viewer button:focus-visible, .viewer input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .viewer:fullscreen { display: flex; flex-direction: column; width: 100%; height: 100%; border: 0; border-radius: 0; }
+    .viewer:fullscreen .viewer-stage { flex: 1; aspect-ratio: auto; }
 
-.hint {
-  position: absolute; top: 12px; right: max(16px, env(safe-area-inset-right, 0px));
-  font-size: 0.75rem; color: var(--muted); background: var(--panel);
-  border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-}
-.panel {
-  position: absolute;
-  left: max(16px, env(safe-area-inset-left, 0px));
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  width: min(300px, calc(100% - 32px));
-  display: grid; gap: 14px; padding: 14px 16px;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-}
-.field { display: grid; gap: 6px; }
-.field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.field label { font-size: 0.82rem; font-weight: 500; }
-.value { font-family: var(--font-data); font-size: 0.8rem; color: var(--accent); font-variant-numeric: tabular-nums; }
-.note { margin: 0; font-size: 0.72rem; color: var(--muted); line-height: 1.5; }
-input[type="range"] { width: 100%; accent-color: var(--accent); }
-.buttons { display: flex; flex-wrap: wrap; gap: 8px; }
-button {
-  font: inherit; font-size: 0.8rem; color: var(--fg); background: transparent;
-  border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; cursor: pointer;
-}
-button:hover { border-color: var(--accent); }
-button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
-button:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .video-block { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 24px; align-items: start; margin: 20px 0 8px; }
+    .video-block video { display: block; width: 100%; aspect-ratio: 9 / 16; background: var(--code-bg); border-radius: 8px; border: 1px solid var(--border); }
+    .specs { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; font-size: 0.95rem; }
+    .specs dt { color: var(--muted); }
+    .specs dd { margin: 0; font-variant-numeric: tabular-nums; }
 
-.loading {
-  position: absolute; inset: 0; display: grid; place-content: center; gap: 10px;
-  justify-items: center; text-align: center; color: var(--muted); font-size: 0.85rem;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-}
-.bar { width: min(240px, 60vw); height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
-.bar > span { display: block; height: 100%; width: 0%; background: var(--accent); transition: width 0.15s linear; }
-.error { color: var(--fg); max-width: 34ch; line-height: 1.6; }
+    .steps { padding-left: 1.4em; }
+    .steps li { margin-bottom: 14px; padding-left: 4px; }
+    .steps li::marker { color: var(--accent); font-weight: 700; }
+    .num { font-variant-numeric: tabular-nums; }
 
-@media (max-width: 520px) {
-  .hint { display: none; }
-  .panel { gap: 10px; padding: 12px 14px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .bar > span { transition: none; }
-}
-</style>
+    @media (max-width: 600px) {
+      .viewer-stage { aspect-ratio: 1 / 1; }
+      .video-block { grid-template-columns: minmax(0, 1fr); }
+      .video-block video { max-width: 260px; }
+    }
+  </style>
 </head>
 <body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="../">Brian Wu</a>
+      <nav class="nav">
+        <a href="../#posts">文章</a>
+        <a href="../#projects">作品</a>
+        <a href="../#about">關於</a>
+      </nav>
+    </div>
+  </header>
 
-<header>
-  <h1>桌角場景重建</h1>
-  <ul class="meta" aria-label="重建資訊">
-    <li>13 秒手機影片</li>
-    <li>126 / 130 影格註冊</li>
-    <li>4 個 2.56 m 區塊</li>
-    <li id="faceCount">— 面</li>
-  </ul>
-</header>
+  <main class="wrap">
+    <article class="post">
+      <h1>用 13 秒手機影片重建 3D 場景</h1>
+      <div class="meta"><time datetime="2026-11-25">2026-11-25</time> · 3D 重建 · GenRecon</div>
 
-<main class="stage">
-  <canvas id="view" tabindex="0" aria-label="3D 場景檢視器：拖曳旋轉，滾輪縮放，右鍵或雙指平移"></canvas>
-  <div class="hint">拖曳旋轉 · 滾輪縮放 · 右鍵或雙指平移</div>
+      <p>我用手機在實驗室的桌角錄了一段 13 秒的影片，丟進 <a href="https://kasothaphie.github.io/GenRecon/">GenRecon</a>，重建出一個帶材質的 3D 場景。GenRecon 是 TUM 提出的多視角室內場景重建方法，用 TRELLIS.2 這個 3D 生成模型當先驗，所以沒拍清楚的地方也會被「補」出來。下面可以直接拖曳旋轉看看。</p>
 
-  <div class="loading" id="loading">
-    <div id="loadText">載入模型中…</div>
-    <div class="bar" aria-hidden="true"><span id="loadBar"></span></div>
-  </div>
+      <figure class="viewer wide" id="viewer">
+        <div class="viewer-stage">
+          <canvas id="view" tabindex="0" aria-label="3D 場景檢視器：拖曳旋轉，點一下後可用滾輪縮放，右鍵或雙指平移"></canvas>
+          <div class="viewer-hint">拖曳旋轉 · 點一下後可滾輪縮放 · 右鍵或雙指平移</div>
+          <div class="viewer-loading" id="loading">
+            <div id="loadText">載入模型中…</div>
+            <div class="bar" aria-hidden="true"><span id="loadBar"></span></div>
+          </div>
+        </div>
+        <div class="viewer-bar">
+          <div class="viewer-cut">
+            <label for="cut">剖面高度</label>
+            <input type="range" id="cut" min="0.3" max="2.6" step="0.01" value="1.95">
+            <output id="cutValue" for="cut">1.95 m</output>
+          </div>
+          <div class="viewer-buttons">
+            <button type="button" id="shading" aria-pressed="false">光照</button>
+            <button type="button" id="spin" aria-pressed="false">自動旋轉</button>
+            <button type="button" id="reset">重設視角</button>
+            <button type="button" id="fullscreen" hidden>全螢幕</button>
+          </div>
+        </div>
+      </figure>
+      <p class="caption">剖面高度會切掉該高度以上的部分，拉到最右邊會顯示天花板；地板網格每格 50 cm。網頁版是簡化過的預覽（約 <span id="faceCount" class="num">78</span> 萬面、頂點顏色），原始輸出是 900 萬面、帶 4K PBR 貼圖的 GLB。</p>
 
-  <section class="panel" aria-label="檢視設定">
-    <div class="field">
-      <div class="field-head">
-        <label for="cut">剖面高度</label>
-        <span class="value" id="cutValue">1.95 m</span>
+      <h2>輸入影片</h2>
+      <div class="video-block">
+        <video src="input.mp4" poster="input_poster.jpg" controls muted playsinline loop preload="metadata"></video>
+        <dl class="specs">
+          <dt>長度</dt><dd>13 秒</dd>
+          <dt>解析度</dt><dd>1080 × 1920（直拍）</dd>
+          <dt>器材</dt><dd>手機主鏡頭，手持</dd>
+          <dt>拍法</dt><dd>在桌角前左右來回走，中間往上掃到天花板、往下掃到地板</dd>
+          <dt>備註</dt><dd>網頁上的版本轉成 720p，並拿掉了聲音</dd>
+        </dl>
       </div>
-      <input type="range" id="cut" min="0.3" max="2.6" step="0.01" value="1.95">
-      <p class="note">切掉這個高度以上的部分，從上方就能看進場景。拉到最右邊會顯示天花板。</p>
-    </div>
-    <div class="buttons">
-      <button type="button" id="shading" aria-pressed="false">光照</button>
-      <button type="button" id="spin" aria-pressed="false">自動旋轉</button>
-      <button type="button" id="reset">重設視角</button>
-    </div>
-    <p class="note">GenRecon 官方權重重建。預覽版：頂點顏色，原始 900 萬面簡化到 1.6 cm 精度；地板網格每格 50 cm。</p>
-  </section>
-</main>
 
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
-<script type="module">
-import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+      <h2>做法</h2>
+      <p>GenRecon 官方提供的是「已知相機位置的多視角影像 → 3D 場景」的推論程式，權重也是官方的。我自己補上的是前面「手機影片 → 官方輸入格式」這一段。</p>
+      <ol class="steps">
+        <li><strong>抽影格</strong>：用 ffmpeg 每秒抽 10 張，共 <span class="num">130</span> 張。</li>
+        <li><strong>估相機位置</strong>：用 pycolmap（COLMAP 的 Python 版）做特徵匹配和 Structure-from-Motion。<span class="num">130</span> 張裡有 <span class="num">126</span> 張成功定位，重投影誤差 <span class="num">0.97</span> px，得到約 1.2 萬個 3D 點。</li>
+        <li><strong>對齊座標</strong>：GenRecon 假設 z 軸朝上、單位是公尺，但 SfM 的結果方向和尺度都是任意的。我用相機的「上」方向加上地板平面估出重力方向，用點雲的主成分決定水平方向，再假設天花板高 <span class="num">2.6</span> m 換算成公尺。</li>
+        <li><strong>GenRecon 重建</strong>：場景被切成 4 個邊長 <span class="num">2.56</span> m、互相重疊的立方區塊，每個區塊依序生成稀疏結構、幾何、材質（三個 flow model，各 12 步）。在 RTX 3090 上約 7 分鐘，顯存峰值 <span class="num">5.6</span> GB。</li>
+        <li><strong>輸出</strong>：900 萬面的 PBR mesh，再烘焙成帶貼圖的 GLB。烘焙要在 CPU 上做 UV 展開，花了快 30 分鐘，比重建本身還久。</li>
+      </ol>
 
-const canvas = document.getElementById("view");
-const stage = canvas.parentElement;
-const loadingEl = document.getElementById("loading");
-const loadText = document.getElementById("loadText");
-const loadBar = document.getElementById("loadBar");
+      <figure>
+        <img src="chunk_layout.png" alt="點雲俯視圖，上面疊著 4 個互相重疊的重建區塊" loading="lazy" width="800" height="800" style="max-width: 420px;">
+        <figcaption>俯視圖：SfM 點雲和 4 個重建區塊，每塊 2.56 m，彼此重疊四分之一。</figcaption>
+      </figure>
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-renderer.localClippingEnabled = true;
+      <figure class="wide">
+        <img src="render_check.jpg" alt="五組影像，每組左邊是原始影格，右邊是從同一相機位置渲染的重建結果" loading="lazy" width="2640" height="480">
+        <figcaption>每組左邊是原始影格，右邊是從同一個相機位置渲染的重建結果。</figcaption>
+      </figure>
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
-const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = true;
-controls.dampingFactor = 0.08;
-controls.autoRotateSpeed = 0.8;
+      <h2>觀察</h2>
+      <ul>
+        <li>椅子、螢幕、冷氣、窗簾、木地板的形狀和顏色都重建得不錯。重建的表面跟 SfM 點雲的距離中位數約 2 cm。</li>
+        <li>鍵盤按鍵、桌上小東西這類細節比較糊，受限於模型 512 的解析度。</li>
+        <li>拍得少的地方（天花板、拍攝範圍邊緣）是生成模型「補」出來的，有時會出現不存在的漂浮物。同一支影片重跑一次，結果也會有些不同。</li>
+        <li>只出現在畫面邊緣的隔壁座位，重建得比較隨意。</li>
+      </ul>
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f96, 1.7));
-const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-sun.position.set(2.5, 4, 2);
-scene.add(sun);
+      <h2>參考</h2>
+      <ul>
+        <li>K. Schmid, N. von Lützow, J. Hladký, A. Dai, M. Nießner. <em>GenRecon: Bridging Generative Priors for Multi-View 3D Scene Reconstruction</em>, 2026. <a href="https://arxiv.org/abs/2605.23888">arXiv</a> · <a href="https://kasothaphie.github.io/GenRecon/">專案頁</a> · <a href="https://github.com/kasothaphie/GenRecon">程式碼</a></li>
+        <li><a href="https://github.com/microsoft/TRELLIS.2">TRELLIS.2</a>：GenRecon 使用的 3D 生成模型</li>
+        <li><a href="https://github.com/colmap/pycolmap">pycolmap</a>、<a href="https://threejs.org/">three.js</a></li>
+      </ul>
 
-// keep geometry below the cut height: plane normal points down, constant = height
-const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1.95);
-const unlitMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, clippingPlanes: [cutPlane] });
-const litMat = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.85, metalness: 0, clippingPlanes: [cutPlane] });
-const meshes = [];
-let grid = null;
-let home = null;
+      <a class="back" href="../">← 回首頁</a>
+    </article>
+  </main>
 
-function cssVar(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-}
-function applyTheme() {
-  renderer.setClearColor(new THREE.Color(cssVar("--canvas")));
-  if (grid) {
-    grid.material.vertexColors = false;
-    grid.material.color = new THREE.Color(cssVar("--grid"));
-    grid.material.needsUpdate = true;
-  }
-}
-applyTheme();
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
-new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  <footer class="site-footer">
+    <div class="wrap">© 2026 Brian Wu · Hosted on GitHub Pages</div>
+  </footer>
 
-function resize() {
-  const w = stage.clientWidth, h = stage.clientHeight;
-  if (!w || !h) return;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-}
-new ResizeObserver(resize).observe(stage);
-resize();
-
-const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-
-async function fetchModel(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const total = Number(res.headers.get("content-length")) || 0;
-  const reader = res.body.getReader();
-  const chunks = [];
-  let got = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    got += value.length;
-    const mb = (got / 1e6).toFixed(1);
-    loadText.textContent = total ? `載入模型中… ${mb} / ${(total / 1e6).toFixed(1)} MB` : `載入模型中… ${mb} MB`;
-    if (total) loadBar.style.width = `${Math.min(100, (got / total) * 100)}%`;
-  }
-  let bytes = new Uint8Array(got);
-  let off = 0;
-  for (const c of chunks) { bytes.set(c, off); off += c.length; }
-  // gzip magic 1f 8b: decompress here (plain .glb passes straight through)
-  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
-    loadText.textContent = "解壓縮中…";
-    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
-    bytes = new Uint8Array(await new Response(stream).arrayBuffer());
-  }
-  return bytes.buffer;
-}
-
-function setupScene(root) {
-  let faces = 0;
-  root.traverse((o) => {
-    if (!o.isMesh) return;
-    const g = o.geometry;
-    const col = g.getAttribute("color");
-    if (col) {
-      // vertex colours were written as sRGB bytes; glTF reads COLOR_0 as linear
-      const lin = new Float32Array(col.count * 3);
-      for (let i = 0; i < col.count; i++) {
-        lin[i * 3] = srgbToLinear(col.getX(i));
-        lin[i * 3 + 1] = srgbToLinear(col.getY(i));
-        lin[i * 3 + 2] = srgbToLinear(col.getZ(i));
-      }
-      g.setAttribute("color", new THREE.BufferAttribute(lin, 3));
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
     }
-    if (!g.getAttribute("normal")) g.computeVertexNormals();
-    faces += g.index ? g.index.count / 3 : g.getAttribute("position").count / 3;
-    o.material = unlitMat;
-    meshes.push(o);
-  });
-  scene.add(root);
-  document.getElementById("faceCount").textContent = `${(faces / 1e4).toFixed(1)} 萬面`;
+  }
+  </script>
+  <script type="module">
+  import * as THREE from "three";
+  import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+  import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-  const box = new THREE.Box3().setFromObject(root);
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z);
+  const viewer = document.getElementById("viewer");
+  const canvas = document.getElementById("view");
+  const stage = canvas.parentElement;
+  const loadingEl = document.getElementById("loading");
+  const loadText = document.getElementById("loadText");
+  const loadBar = document.getElementById("loadBar");
 
-  grid = new THREE.GridHelper(Math.ceil(maxDim * 2 / 0.5) * 0.5, Math.ceil(maxDim * 2 / 0.5));
-  grid.position.set(center.x, box.min.y - 0.004, center.z);
-  grid.material.transparent = true;
-  grid.material.opacity = 0.55;
-  scene.add(grid);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.localClippingEnabled = true;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.autoRotateSpeed = 0.8;
+  controls.enableZoom = false; // wheel zoom only after the viewer is clicked, so the page still scrolls
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f96, 1.7));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+  sun.position.set(2.5, 4, 2);
+  scene.add(sun);
+
+  // keep geometry below the cut height: plane normal points down, constant = height
+  const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1.95);
+  const unlitMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, clippingPlanes: [cutPlane] });
+  const litMat = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.85, metalness: 0, clippingPlanes: [cutPlane] });
+  const meshes = [];
+  let grid = null;
+  let home = null;
+
+  const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  function applyTheme() {
+    renderer.setClearColor(new THREE.Color(cssVar("--code-bg")));
+    if (grid) {
+      grid.material.vertexColors = false;
+      grid.material.color = new THREE.Color(cssVar("--muted"));
+      grid.material.needsUpdate = true;
+    }
+  }
   applyTheme();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 
-  // the phone was on the +x side of the scene, so open from that side, looking down
-  const target = new THREE.Vector3(center.x, box.min.y + size.y * 0.3, center.z);
-  const dir = new THREE.Vector3(1.0, 1.05, 0.45).normalize();
-  home = { target, position: target.clone().addScaledVector(dir, maxDim * 1.55) };
-  resetView();
-  controls.maxDistance = maxDim * 6;
-  controls.minDistance = 0.2;
-}
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(stage);
+  resize();
 
-function resetView() {
-  if (!home) return;
-  controls.target.copy(home.target);
-  camera.position.copy(home.position);
-  controls.update();
-}
+  // activate wheel zoom on click inside; release on click outside
+  canvas.addEventListener("pointerdown", () => { controls.enableZoom = true; viewer.classList.add("active"); });
+  document.addEventListener("pointerdown", (e) => {
+    if (!viewer.contains(e.target)) { controls.enableZoom = false; viewer.classList.remove("active"); }
+  });
 
-const cut = document.getElementById("cut");
-const cutValue = document.getElementById("cutValue");
-function applyCut() {
-  const h = parseFloat(cut.value);
-  cutPlane.constant = h >= 2.59 ? 100 : h;
-  cutValue.textContent = h >= 2.59 ? "全部顯示" : `${h.toFixed(2)} m`;
-}
-cut.addEventListener("input", applyCut);
-applyCut();
+  const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
 
-const shadingBtn = document.getElementById("shading");
-shadingBtn.addEventListener("click", () => {
-  const on = shadingBtn.getAttribute("aria-pressed") !== "true";
-  shadingBtn.setAttribute("aria-pressed", String(on));
-  for (const m of meshes) m.material = on ? litMat : unlitMat;
-});
-const spinBtn = document.getElementById("spin");
-spinBtn.addEventListener("click", () => {
-  const on = spinBtn.getAttribute("aria-pressed") !== "true";
-  spinBtn.setAttribute("aria-pressed", String(on));
-  controls.autoRotate = on;
-});
-document.getElementById("reset").addEventListener("click", resetView);
+  async function fetchModel(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const total = Number(res.headers.get("content-length")) || 0;
+    const reader = res.body.getReader();
+    const chunks = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      got += value.length;
+      const mb = (got / 1e6).toFixed(1);
+      loadText.textContent = total ? `載入模型中… ${mb} / ${(total / 1e6).toFixed(1)} MB` : `載入模型中… ${mb} MB`;
+      if (total) loadBar.style.width = `${Math.min(100, (got / total) * 100)}%`;
+    }
+    const bytes = new Uint8Array(got);
+    let off = 0;
+    for (const c of chunks) { bytes.set(c, off); off += c.length; }
+    return bytes.buffer;
+  }
 
-renderer.setAnimationLoop(() => {
-  controls.update();
-  renderer.render(scene, camera);
-});
+  function setupScene(root) {
+    let faces = 0;
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      const g = o.geometry;
+      const col = g.getAttribute("color");
+      if (col) {
+        // vertex colours were written as sRGB bytes; glTF reads COLOR_0 as linear
+        const lin = new Float32Array(col.count * 3);
+        for (let i = 0; i < col.count; i++) {
+          lin[i * 3] = srgbToLinear(col.getX(i));
+          lin[i * 3 + 1] = srgbToLinear(col.getY(i));
+          lin[i * 3 + 2] = srgbToLinear(col.getZ(i));
+        }
+        g.setAttribute("color", new THREE.BufferAttribute(lin, 3));
+      }
+      if (!g.getAttribute("normal")) g.computeVertexNormals();
+      faces += g.index ? g.index.count / 3 : g.getAttribute("position").count / 3;
+      o.material = unlitMat;
+      meshes.push(o);
+    });
+    scene.add(root);
+    document.getElementById("faceCount").textContent = (faces / 1e4).toFixed(0);
 
-try {
-  const buf = await fetchModel("scene.glb");
-  loadText.textContent = "解析模型中…";
-  const gltf = await new GLTFLoader().parseAsync(buf, "");
-  setupScene(gltf.scene);
-  loadingEl.hidden = true;
-} catch (err) {
-  loadText.className = "error";
-  loadText.textContent = `模型載入失敗（${err.message}）。請重新整理頁面再試一次。`;
-  loadBar.parentElement.hidden = true;
-}
-</script>
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
 
+    const cells = Math.ceil((maxDim * 2) / 0.5);
+    grid = new THREE.GridHelper(cells * 0.5, cells);
+    grid.position.set(center.x, box.min.y - 0.004, center.z);
+    grid.material.transparent = true;
+    grid.material.opacity = 0.45;
+    scene.add(grid);
+    applyTheme();
+
+    // the phone was on the +x side of the scene, so open from that side, looking down
+    const target = new THREE.Vector3(center.x, box.min.y + size.y * 0.3, center.z);
+    const dir = new THREE.Vector3(1.0, 1.05, 0.45).normalize();
+    home = { target, position: target.clone().addScaledVector(dir, maxDim * 1.45) };
+    resetView();
+    controls.maxDistance = maxDim * 6;
+    controls.minDistance = 0.2;
+  }
+
+  function resetView() {
+    if (!home) return;
+    controls.target.copy(home.target);
+    camera.position.copy(home.position);
+    controls.update();
+  }
+
+  const cut = document.getElementById("cut");
+  const cutValue = document.getElementById("cutValue");
+  function applyCut() {
+    const h = parseFloat(cut.value);
+    cutPlane.constant = h >= 2.59 ? 100 : h;
+    cutValue.textContent = h >= 2.59 ? "全部顯示" : `${h.toFixed(2)} m`;
+  }
+  cut.addEventListener("input", applyCut);
+  applyCut();
+
+  function toggle(btn, fn) {
+    btn.addEventListener("click", () => {
+      const on = btn.getAttribute("aria-pressed") !== "true";
+      btn.setAttribute("aria-pressed", String(on));
+      fn(on);
+    });
+  }
+  toggle(document.getElementById("shading"), (on) => { for (const m of meshes) m.material = on ? litMat : unlitMat; });
+  toggle(document.getElementById("spin"), (on) => { controls.autoRotate = on; });
+  document.getElementById("reset").addEventListener("click", resetView);
+
+  const fsBtn = document.getElementById("fullscreen");
+  if (document.fullscreenEnabled) {
+    fsBtn.hidden = false;
+    fsBtn.addEventListener("click", () => {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else viewer.requestFullscreen().catch(() => {});
+    });
+    document.addEventListener("fullscreenchange", () => {
+      const on = document.fullscreenElement === viewer;
+      fsBtn.textContent = on ? "離開全螢幕" : "全螢幕";
+      if (on) { controls.enableZoom = true; viewer.classList.add("active"); }
+    });
+  }
+
+  // render only while the viewer is on screen
+  let visible = true;
+  new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(viewer);
+  renderer.setAnimationLoop(() => {
+    if (!visible) return;
+    controls.update();
+    renderer.render(scene, camera);
+  });
+
+  try {
+    const buf = await fetchModel("scene.glb");
+    loadText.textContent = "解析模型中…";
+    const gltf = await new GLTFLoader().parseAsync(buf, "");
+    setupScene(gltf.scene);
+    loadingEl.hidden = true;
+  } catch (err) {
+    loadText.textContent = `模型載入失敗（${err.message}）。請重新整理頁面再試一次。`;
+    loadBar.parentElement.hidden = true;
+  }
+  </script>
 </body>
 </html>
