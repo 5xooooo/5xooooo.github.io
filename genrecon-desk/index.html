@@ -114,14 +114,13 @@
             <output id="cutValue" for="cut">1.95 m</output>
           </div>
           <div class="viewer-buttons">
-            <button type="button" id="shading" aria-pressed="false">光照</button>
             <button type="button" id="spin" aria-pressed="false">自動旋轉</button>
             <button type="button" id="reset">重設視角</button>
             <button type="button" id="fullscreen" hidden>全螢幕</button>
           </div>
         </div>
       </figure>
-      <p class="caption">剖面高度會切掉該高度以上的部分，拉到最右邊會顯示天花板；地板網格每格 50 cm。「光照」會用 PBR 材質加上室內環境光來顯示。網頁版是簡化過的版本（約 <span id="faceCount" class="num">127</span> 萬面、2048 貼圖，18.6 MB），原始輸出是 900 萬面、4K PBR 貼圖的 GLB（366 MB）。</p>
+      <p class="caption">剖面高度會切掉該高度以上的部分，拉到最右邊會顯示天花板；地板網格每格 50 cm。畫面顯示的是模型輸出的表面顏色（base color 貼圖），沒有另外加光影。網頁版是簡化過的版本（約 <span id="faceCount" class="num">127</span> 萬面、2048 貼圖，18.6 MB），原始輸出是 900 萬面、4K PBR 貼圖的 GLB（366 MB）。</p>
 
       <h2>輸入影片</h2>
       <div class="video-block">
@@ -191,7 +190,6 @@
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
   import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
   import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
-  import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
   const viewer = document.getElementById("viewer");
   const canvas = document.getElementById("view");
@@ -212,18 +210,8 @@
   controls.autoRotateSpeed = 0.8;
   controls.enableZoom = false; // wheel zoom only after the viewer is clicked, so the page still scrolls
 
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f96, 1.7));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-  sun.position.set(2.5, 4, 2);
-  scene.add(sun);
-
-  // soft indoor environment for the PBR ("光照") mode
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-
   // keep geometry below the cut height: plane normal points down, constant = height
   const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1.95);
-  const meshes = []; // { mesh, unlit, lit }
   let grid = null;
   let home = null;
 
@@ -282,18 +270,11 @@
     root.traverse((o) => {
       if (!o.isMesh) return;
       const g = o.geometry;
-      if (!g.getAttribute("normal")) g.computeVertexNormals();
       faces += g.index ? g.index.count / 3 : g.getAttribute("position").count / 3;
-      // "原色": the baked base-colour texture without lighting (looks like the photos)
-      // "光照": the original PBR material lit by a soft room environment
-      const lit = o.material;
-      lit.side = THREE.DoubleSide;
-      lit.clippingPlanes = [cutPlane];
-      lit.envMap = envMap;
-      lit.envMapIntensity = 1.0;
-      const unlit = new THREE.MeshBasicMaterial({ map: lit.map, side: THREE.DoubleSide, clippingPlanes: [cutPlane] });
-      o.material = unlit;
-      meshes.push({ mesh: o, unlit, lit });
+      // show only what the model produced: the baked base-colour texture, no added lighting
+      const pbr = o.material;
+      o.material = new THREE.MeshBasicMaterial({ map: pbr.map, side: THREE.DoubleSide, clippingPlanes: [cutPlane] });
+      pbr.dispose();
     });
     scene.add(root);
     document.getElementById("faceCount").textContent = (faces / 1e4).toFixed(0);
@@ -344,7 +325,6 @@
       fn(on);
     });
   }
-  toggle(document.getElementById("shading"), (on) => { for (const m of meshes) m.mesh.material = on ? m.lit : m.unlit; });
   toggle(document.getElementById("spin"), (on) => { controls.autoRotate = on; });
   document.getElementById("reset").addEventListener("click", resetView);
 
