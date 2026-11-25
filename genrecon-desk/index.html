@@ -93,10 +93,10 @@
 
   <main class="wrap">
     <article class="post">
-      <h1>用 13 秒手機影片重建 3D 場景</h1>
+      <h1>用手機影片重建 3D 場景</h1>
       <div class="meta"><time datetime="2026-11-25">2026-11-25</time> · 3D 重建 · GenRecon</div>
 
-      <p>我用手機在實驗室的桌角錄了一段 13 秒的影片，丟進 <a href="https://kasothaphie.github.io/GenRecon/">GenRecon</a>，重建出一個帶材質的 3D 場景。GenRecon 是 TUM 提出的多視角室內場景重建方法，用 TRELLIS.2 這個 3D 生成模型當先驗，所以沒拍清楚的地方也會被「補」出來。下面可以直接拖曳旋轉看看。</p>
+      <p>我用手機在實驗室錄了一段 13 秒的影片，丟進 <a href="https://kasothaphie.github.io/GenRecon/">GenRecon</a>，重建出一個帶材質的 3D 場景。GenRecon 是 TUM 提出的多視角室內場景重建方法，所以沒拍清楚的地方也會被「補」出來</p>
 
       <figure class="viewer wide" id="viewer">
         <div class="viewer-stage">
@@ -120,7 +120,7 @@
           </div>
         </div>
       </figure>
-      <p class="caption">剖面高度會切掉該高度以上的部分，拉到最右邊會顯示天花板；地板網格每格 50 cm。畫面顯示的是模型輸出的表面顏色（base color 貼圖），沒有另外加光影。網頁版是簡化過的版本（約 <span id="faceCount" class="num">127</span> 萬面、2048 貼圖，18.6 MB），原始輸出是 900 萬面、4K PBR 貼圖的 GLB（366 MB）。</p>
+      <p class="caption">剖面高度會切掉該高度以上的部分，拉到最右邊會顯示天花板；地板網格每格 50 cm。畫面顯示的是模型輸出的表面顏色（base color 貼圖）。網頁版是簡化過的版本（約 <span id="faceCount" class="num">127</span> 萬面、2048 貼圖，18.6 MB），原始輸出是 900 萬面、4K PBR 貼圖的 GLB（366 MB）。</p>
 
       <h2>輸入影片</h2>
       <div class="video-block">
@@ -135,10 +135,16 @@
       </div>
 
       <h2>做法</h2>
-      <p>GenRecon 官方提供的是「已知相機位置的多視角影像 → 3D 場景」的推論程式，權重也是官方的。我自己補上的是前面「手機影片 → 官方輸入格式」這一段。</p>
+      <p>GenRecon 官方提供的是「已知相機位置的多視角影像 → 3D 場景」的推論程式，權重也是官方的。我自己補上「手機影片 → 官方輸入格式」這一段。</p>
       <ol class="steps">
         <li><strong>抽影格</strong>：用 ffmpeg 每秒抽 10 張，共 <span class="num">130</span> 張。</li>
-        <li><strong>估相機位置</strong>：用 pycolmap（COLMAP 的 Python 版）做特徵匹配和 Structure-from-Motion。<span class="num">130</span> 張裡有 <span class="num">126</span> 張成功定位，重投影誤差 <span class="num">0.97</span> px，得到約 1.2 萬個 3D 點。</li>
+        <li><strong>估相機位置與相機參數</strong>：用 pycolmap（COLMAP 的 Python 版）做特徵匹配和 Structure-from-Motion。<span class="num">130</span> 張裡有 <span class="num">126</span> 張成功定位，重投影誤差 <span class="num">0.97</span> px，得到約 1.2 萬個 3D 點雲。輸出包含
+          <ul>
+            <li><strong>cameras.txt</strong>：相機內參</li>
+            <li><strong>images.txt</strong>：每張影格的相機位置</li>
+            <li><strong>points3D.txt</strong>：SfM 產生的稀疏點雲</li>
+          </ul>
+        </li>
         <li><strong>對齊座標</strong>：GenRecon 假設 z 軸朝上、單位是公尺，但 SfM 的結果方向和尺度都是任意的。我用相機的「上」方向加上地板平面估出重力方向，用點雲的主成分決定水平方向，再假設天花板高 <span class="num">2.6</span> m 換算成公尺。</li>
         <li><strong>GenRecon 重建</strong>：場景被切成 4 個邊長 <span class="num">2.56</span> m、互相重疊的立方區塊，每個區塊依序生成稀疏結構、幾何、材質（三個 flow model，各 12 步）。在 RTX 3090 上約 7 分鐘，顯存峰值 <span class="num">5.6</span> GB。</li>
         <li><strong>輸出</strong>：900 萬面的 PBR mesh，再烘焙成帶貼圖的 GLB。烘焙要在 CPU 上做 UV 展開，花了快 30 分鐘，比重建本身還久。</li>
@@ -156,7 +162,6 @@
 
       <h2>觀察</h2>
       <ul>
-        <li>椅子、螢幕、冷氣、窗簾、木地板的形狀和顏色都重建得不錯。重建的表面跟 SfM 點雲的距離中位數約 2 cm。</li>
         <li>鍵盤按鍵、桌上小東西這類細節比較糊，受限於模型 512 的解析度。</li>
         <li>拍得少的地方（天花板、拍攝範圍邊緣）是生成模型「補」出來的，有時會出現不存在的漂浮物。同一支影片重跑一次，結果也會有些不同。</li>
         <li>只出現在畫面邊緣的隔壁座位，重建得比較隨意。</li>
