@@ -150,9 +150,12 @@
         <li><strong>輸出</strong>：900 萬面的 PBR mesh，再烘焙成帶貼圖的 GLB。烘焙要在 CPU 上做 UV 展開，花了快 30 分鐘，比重建本身還久。</li>
       </ol>
 
-      <figure>
-        <img src="chunk_layout.png" alt="點雲俯視圖，上面疊著 4 個互相重疊的重建區塊" loading="lazy" width="800" height="800" style="max-width: 420px;">
-        <figcaption>俯視圖：SfM 點雲和 4 個重建區塊，每塊 2.56 m，彼此重疊四分之一。</figcaption>
+      <figure class="wide">
+        <picture>
+          <source srcset="chunk_layout_dark.png" media="(prefers-color-scheme: dark)">
+          <img src="chunk_layout.png" alt="場景切塊示意：左為俯視、右為正視。灰點是 SfM 點雲，越深越高；4 個彩色方框是重建區塊，黑線是相機路線" loading="lazy" width="1484" height="665">
+        </picture>
+        <figcaption>GenRecon 一次只能生成一塊邊長 2.56 m 的立方體，所以先把場景切塊、分別生成，再拼回去。灰點是 SfM 點雲（顏色越深越高），彩色方框是區塊，黑線是手機移動的路線。左右兩塊重疊 1.28 m，拼接時才不會有接縫；前後方向場景只有約 1.9 m 深，兩塊幾乎完全重疊（區塊 0 和 2、1 和 3），所以正視圖只看得到兩個框。</figcaption>
       </figure>
 
       <figure class="wide">
