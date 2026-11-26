@@ -110,8 +110,8 @@
         <div class="viewer-bar">
           <div class="viewer-cut">
             <label for="cut">剖面高度</label>
-            <input type="range" id="cut" min="0.3" max="2.6" step="0.01" value="1.95">
-            <output id="cutValue" for="cut">1.95 m</output>
+            <input type="range" id="cut" min="0.3" max="2.6" step="0.01" value="2.6">
+            <output id="cutValue" for="cut">全部顯示</output>
           </div>
           <div class="viewer-buttons">
             <button type="button" id="spin" aria-pressed="false">自動旋轉</button>
@@ -120,7 +120,7 @@
           </div>
         </div>
       </figure>
-      <p class="caption">剖面高度會切掉該高度以上的部分，拉到最右邊會顯示天花板；地板網格每格 50 cm。畫面顯示的是模型輸出的表面顏色（base color 貼圖）。網頁版是簡化過的版本（約 <span id="faceCount" class="num">127</span> 萬面、2048 貼圖，18.6 MB），原始輸出是 900 萬面、4K PBR 貼圖的 GLB（366 MB）。</p>
+      <p class="caption">預設顯示整個場景；把剖面高度往左拉，會切掉該高度以上的部分（例如天花板），方便看進室內；地板網格每格 50 cm。畫面顯示的是模型輸出的表面顏色（base color 貼圖）。網頁版是簡化過的版本（約 <span id="faceCount" class="num">127</span> 萬面、2048 貼圖，18.6 MB），原始輸出是 900 萬面、4K PBR 貼圖的 GLB（366 MB）。</p>
 
       <h2>輸入影片</h2>
       <div class="video-block">
@@ -219,7 +219,7 @@
   controls.enableZoom = false; // wheel zoom only after the viewer is clicked, so the page still scrolls
 
   // keep geometry below the cut height: plane normal points down, constant = height
-  const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1.95);
+  const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 100);
   let grid = null;
   let home = null;
 
